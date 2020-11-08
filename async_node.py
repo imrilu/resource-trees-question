@@ -7,14 +7,21 @@ class AsyncNode(SimpleNode):
         self.parent = None
         self.callback = lambda: None
 
-    def add_child(self, child, ready=False):
-        if not ready or not child.is_ready():
-            super().add_child(child)
-            child.add_parent(self)
+    def add_child(self, child):
+        super().add_child(child)
+        child.add_parent(self)
+        self.is_ready()
 
     def remove_child(self, child):
         super().remove_child(child)
         self.is_ready()
+
+    def notify_parent(self, ready):
+        if self.parent:
+            if ready:
+                self.parent.remove_child(self)
+            else:
+                self.parent.add_child(self)
 
     def add_parent(self, parent):
         if parent:
@@ -37,18 +44,8 @@ class AsyncNode(SimpleNode):
     def is_ready(self):
         if not self.nodes and self.resource_ready:
             self.callback()
-            if self.parent:
-                self.parent.remove_child(self)
+            self.notify_parent(True)
             return True
         else:
-            if self.parent:
-                # pinging parents not ready
-                self.parent.add_child(self, False)
+            self.notify_parent(False)
             return False
-
-    # def toString(self):
-    #     print(self.name + " object:")
-    #     print("NODES : " + ' '.join(self.nodes))
-    #     print("IS RESOURCE READY : ", self.resource_ready)
-    #     print("PARENT : ", self.parent)
-    #     print("CALLBACK : " + str(self.callback))
