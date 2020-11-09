@@ -6,6 +6,7 @@ class AsyncNode(SimpleNode):
         super().__init__(*args, **kwargs)
         self.parent = None
         self.callback = lambda: None
+        self.ready_nodes = list()
 
     def add_child(self, child):
         super().add_child(child)
@@ -16,12 +17,22 @@ class AsyncNode(SimpleNode):
         super().remove_child(child)
         self.is_ready()
 
+    def add_ready_child(self, child):
+        if child not in self.ready_nodes:
+            self.ready_nodes.append(child)
+            self.is_ready()
+
+    def remove_ready_child(self, child):
+        if child in self.ready_nodes:
+            self.ready_nodes.remove(child)
+            self.is_ready()
+
     def notify_parent(self, ready):
         if self.parent:
             if ready:
-                self.parent.remove_child(self)
+                self.parent.add_ready_child(self)
             else:
-                self.parent.add_child(self)
+                self.parent.remove_ready_child(self)
 
     def add_parent(self, parent):
         if parent:
@@ -42,7 +53,7 @@ class AsyncNode(SimpleNode):
         self.is_ready()
 
     def is_ready(self):
-        if not self.nodes and self.resource_ready:
+        if not set(self.nodes).difference(self.ready_nodes) and self.resource_ready:
             self.callback()
             self.notify_parent(True)
             return True
